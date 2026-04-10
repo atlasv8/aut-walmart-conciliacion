@@ -1788,6 +1788,7 @@ async def walmart_conciliar(
              "--output", str(output_path)],
             cwd=str(CONCILIACION_DIR),
             capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=300,
+            env={**os.environ, 'PYTHONIOENCODING': 'utf-8'},
         )
         if result.returncode != 0:
             raise HTTPException(status_code=500,
@@ -1856,6 +1857,7 @@ async def walmart_conciliar_individual(
              str(csv_path), "--cuenta", cuenta, "--output", str(output_path)],
             cwd=str(CONCILIACION_DIR),
             capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=300,
+            env={**os.environ, 'PYTHONIOENCODING': 'utf-8'},
         )
         if result.returncode != 0:
             raise HTTPException(status_code=500,
