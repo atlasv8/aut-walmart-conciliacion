@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, text
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import logging
@@ -848,7 +848,7 @@ def health_check(db: Session = Depends(get_db)):
     """
     try:
         # Intentar una query simple
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         return {
             "status": "healthy",
             "database": "connected"
