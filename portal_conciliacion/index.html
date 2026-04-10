@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Control - Conciliación MercadoLibre</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- ========== PANTALLA DE LOGIN ========== -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-card">
+            <div class="login-brand">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <h1>Centro de Control</h1>
+                <p>Conciliación MercadoLibre · Atlas del Descanso</p>
+            </div>
+            <form id="login-form" onsubmit="AuthManager.login(event)">
+                <div class="login-field">
+                    <label for="login-username">Usuario</label>
+                    <input id="login-username" type="text" autocomplete="username"
+                           placeholder="Ingresa tu usuario" required>
+                </div>
+                <div class="login-field">
+                    <label for="login-password">Contraseña</label>
+                    <div class="login-pass-wrap">
+                        <input id="login-password" type="password" autocomplete="current-password"
+                               placeholder="••••••••" required>
+                        <button type="button" class="btn-toggle-pass" tabindex="-1"
+                                onclick="AuthManager.togglePassword()">👁</button>
+                    </div>
+                </div>
+                <div id="login-error" class="login-error" style="display:none"></div>
+                <button type="submit" id="login-btn" class="btn-login">Iniciar sesión</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="app-layout" id="app-layout" style="display:none">
+        <!-- ========== CONTENIDO PRINCIPAL ========== -->
+        <main class="main-content">
+            <header class="main-header">
+                <nav class="main-nav">
+                    <button class="nav-btn active" data-view="dashboard" onclick="Interfaz.cambiarVista('dashboard')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                        Dashboard
+                    </button>
+                    <button class="nav-btn" data-view="conciliacion" onclick="Interfaz.cambiarVista('conciliacion')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        Nueva Conciliación
+                    </button>
+                    <button class="nav-btn" data-view="historico" onclick="Interfaz.cambiarVista('historico')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Histórico
+                    </button>
+                    <button class="nav-btn" data-view="validacion" onclick="Interfaz.cambiarVista('validacion')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Análisis Validación
+                    </button>
+                    <button class="nav-btn" data-view="analisis-erp" onclick="Interfaz.cambiarVista('analisis-erp')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                        </svg>
+                        Análisis ERP
+                    </button>
+                    <button class="nav-btn" data-view="casos" onclick="Interfaz.cambiarVista('casos')" style="position: relative;">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                        Portal de Casos
+                        <span class="nav-casos-badge" id="nav-casos-badge" style="display:none;">0</span>
+                    </button>
+                    <button class="nav-btn" data-view="walmart" onclick="Interfaz.cambiarVista('walmart')">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Walmart MX
+                    </button>
+                    <button class="nav-btn" data-view="admin" id="nav-btn-admin"
+                            onclick="Interfaz.cambiarVista('admin')" style="display:none">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        Admin
+                    </button>
+                </nav>
+                <div class="main-actions">
+                    <button class="btn btn-secondary" onclick="exportarCasos()">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Exportar
+                    </button>
+                    <div class="header-user-info">
+                        <span id="header-user-rol" class="user-role-badge"></span>
+                        <span id="header-user-nombre" class="header-username"></span>
+                        <button class="btn-logout" onclick="AuthManager.logout()" title="Cerrar sesión">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Salir
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="main-body">
+                <!-- ========== DASHBOARD ========== -->
+                <section class="dashboard active" id="view-dashboard">
+                    <div class="dashboard-welcome">
+                        <h2>Centro de Control</h2>
+                        <p>Gestiona la conciliación de MercadoLibre con Intelisis. Los casos se crean automáticamente y te guían paso a paso.</p>
+                    </div>
+
+                    <div class="dashboard-stats">
+                        <div class="dashboard-stat-card">
+                            <h4>Última Conciliación</h4>
+                            <div class="number" id="dash-ultima-fecha">--</div>
+                            <div class="trend" id="dash-ultima-ordenes"></div>
+                        </div>
+                        <div class="dashboard-stat-card">
+                            <h4>Total Activos</h4>
+                            <div class="number" id="dash-casos-activos">0</div>
+                        </div>
+                        <div class="dashboard-stat-card">
+                            <h4>Pendientes</h4>
+                            <div class="number" id="dash-pendientes">0</div>
+                        </div>
+                        <div class="dashboard-stat-card">
+                            <h4>En Revisión</h4>
+                            <div class="number" id="dash-en-revision">0</div>
+                        </div>
+                        <div class="dashboard-stat-card">
+                            <h4>Resueltos</h4>
+                            <div class="number" id="dash-resueltos">0</div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="dashboard-section">
+                            <div class="dashboard-section-header">
+                                <h3>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; color: var(--warning-dark);">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Pendientes sin atender
+                                </h3>
+                                <button class="btn btn-sm btn-secondary" onclick="Interfaz.cambiarVista('casos'); CasosManager.filtrarPortalPorEstado('PENDIENTE')">Ver todos</button>
+                            </div>
+                            <div class="dashboard-section-body">
+                                <div class="urgente-list" id="lista-pendientes">
+                                    <p style="color: var(--gray-500); text-align: center; padding: 20px;">No hay casos pendientes</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-section">
+                            <div class="dashboard-section-header">
+                                <h3>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    Por Responsable
+                                </h3>
+                            </div>
+                            <div class="dashboard-section-body">
+                                <div class="roles-grid">
+                                    <div class="role-card contador" onclick="CasosManager.filtrarCasosPorResponsable('CONTADOR')">
+                                        <div class="role-card-number" id="role-contador">0</div>
+                                        <div class="role-card-label">Contador</div>
+                                    </div>
+                                    <div class="role-card finanzas" onclick="CasosManager.filtrarCasosPorResponsable('FINANZAS')">
+                                        <div class="role-card-number" id="role-finanzas">0</div>
+                                        <div class="role-card-label">Finanzas</div>
+                                    </div>
+                                    <div class="role-card logistica" onclick="CasosManager.filtrarCasosPorResponsable('LOGISTICA')">
+                                        <div class="role-card-number" id="role-logistica">0</div>
+                                        <div class="role-card-label">Logística</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========== VISTA CONCILIACIÓN ========== -->
+                <section class="conciliacion-view" id="view-conciliacion">
+                    <div class="upload-grid" style="grid-template-columns: 1fr;">
+                        <div class="upload-zone" id="uploadZone1" onclick="document.getElementById('fileInput1').click()">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="width: 40px; height: 40px; color: var(--gray-400); margin-bottom: 12px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <h3>Estado de Cuenta ML</h3>
+                            <p>REFERENCE_ID, TRANSACTION_TYPE, TRANSACTION_NET_AMOUNT...</p>
+                            <input type="file" class="file-input" id="fileInput1" accept=".xlsx,.xls">
+                            <div class="file-name" id="fileName1"></div>
+                        </div>
+                    </div>
+
+                    <div class="process-section">
+                        <button class="btn btn-primary" id="processBtn" disabled onclick="ConciliacionManager.procesarArchivos()">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            Procesar Conciliación
+                        </button>
+                    </div>
+
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p id="loadingText">Procesando archivos...</p>
+                    </div>
+
+                    <div class="results" id="results">
+                        <div class="stats-grid" id="statsGrid"></div>
+                        <div id="resultadosConciliacion"></div>
+
+                        <!-- PANEL DE RESUMEN POR ESTATUS CON VALIDACIONES -->
+                        <div class="panel" id="resumenEstatusPanel" style="display: none; margin-top: 24px;">
+                            <div class="panel-header" style="background: var(--gradient-primary); border-bottom: 2px solid var(--primary);">
+                                <h3 style="color: white;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                    Resumen por Estatus con Validaciones
+                                </h3>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <span style="font-size: 0.75rem; color: rgba(255,255,255,0.9);">
+                                        <span id="totalOrdenesResumen">0</span> órdenes procesadas
+                                    </span>
+                                    <button class="btn btn-sm" id="exportarResumenBtn" style="background: white; color: var(--primary);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        Exportar Resumen
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="panel-body">
+                                <!-- FILTROS RÁPIDOS -->
+                                <div class="portal-filters" style="margin-bottom: 20px;">
+                                    <div class="filter-group">
+                                        <label>Filtrar por Estatus:</label>
+                                        <select class="filter-select" id="filtroResumenEstatus">
+                                            <option value="todos">Todos los estatus</option>
+                                            <option value="VENTA">VENTA</option>
+                                            <option value="RESERVA_EN_CONTRA">RESERVA EN CONTRA</option>
+                                            <option value="RESERVA_A_FAVOR">RESERVA A FAVOR</option>
+                                            <option value="RETENCION">RETENCION</option>
+                                            <option value="COBRO_DEUDA">COBRO DEUDA</option>
+                                            <option value="CANCELACION">CANCELACION</option>
+                                            <option value="FISCAL">FISCAL</option>
+                                            <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                                            <option value="REVISAR">REVISAR</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label>Ordenar por:</label>
+                                        <select class="filter-select" id="ordenarResumen">
+                                            <option value="cantidad">Cantidad (mayor a menor)</option>
+                                            <option value="monto">Monto (mayor a menor)</option>
+                                            <option value="estatus">Estatus (A-Z)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- ESTADÍSTICAS RÁPIDAS -->
+                                <div class="stats-grid" id="statsResumen" style="margin-bottom: 24px;">
+                                    <!-- Se generarán dinámicamente -->
+                                </div>
+
+                                <!-- CONTENIDO DEL RESUMEN -->
+                                <div id="resumenEstatusContent">
+                                    <!-- Aquí se generarán los paneles por estatus -->
+                                </div>
+
+                                <!-- RESUMEN DE ACCIONES -->
+                                <div style="background: var(--info-light); border: 1px solid #b8daff; border-radius: 8px; padding: 16px; margin-top: 24px;">
+                                    <h4 style="color: #004085; font-size: 0.875rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Resumen de Acciones Requeridas
+                                    </h4>
+                                    <div id="resumenAcciones" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                        <!-- Se generarán dinámicamente -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Conciliación con Intelisis -->
+                    <div class="conciliacion-intelisis-card">
+                        <h3>Conciliación con Intelisis</h3>
+
+                        <div class="endpoint-buttons">
+                            <button class="endpoint-btn active" data-endpoint="development"
+                                    onclick="Interfaz.cambiarEndpoint('development')">
+                                Development
+                            </button>
+                            <button class="endpoint-btn" data-endpoint="production"
+                                    onclick="Interfaz.cambiarEndpoint('production')">
+                                Production
+                            </button>
+                        </div>
+
+                        <button onclick="ApiManager.conciliarConIntelisis()" class="btn btn-primary" style="width: 100%;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Conciliar con Intelisis
+                        </button>
+
+                        <div id="estadisticas-conciliacion" class="estadisticas-conciliacion">
+                            <p><strong>Encontradas:</strong> <span id="stat-encontradas">0</span></p>
+                            <p><strong>No encontradas:</strong> <span id="stat-no-encontradas">0</span></p>
+                            <p><strong>Con diferencias:</strong> <span id="stat-diferencias">0</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Pagos CxC -->
+                    <div class="pagos-cxc-card">
+                        <h3>Pagos CxC</h3>
+                        <p class="pagos-cxc-info">
+                            Total de pagos identificados: <strong><span id="total-pagos-cxc">0</span></strong>
+                        </p>
+
+                        <div class="pagos-cxc-buttons">
+                            <button onclick="PagosCxCManager.downloadPagosCxCExcel()" class="btn btn-secondary">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Descargar Excel CxC
+                            </button>
+                            <button onclick="PagosCxCManager.enviarPagosCxCPorCorreo()" class="btn btn-secondary">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                Enviar por Correo
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========== VISTA HISTÓRICO ========== -->
+                <section class="conciliacion-view" id="view-historico">
+                    <div class="dashboard-section">
+                        <div class="dashboard-section-header">
+                            <h3>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Histórico de Conciliaciones
+                            </h3>
+                            <button class="btn btn-sm btn-primary" id="btn-comparar-historico" disabled onclick="HistoricoManager.compararSeleccionadas()">Comparar Seleccionadas (0/2)</button>
+                        </div>
+                        <div class="dashboard-section-body" style="padding: 0 16px 16px;">
+                            <div id="historico-lista">
+                                <p style="color: var(--gray-500); text-align: center; padding: 40px;">Cargando histórico...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="historico-comparacion"></div>
+
+                    <!-- Modal detalle histórico -->
+                    <div class="caso-detalle-overlay" id="modal-historico-detalle" style="display: none;" onclick="this.style.display='none'">
+                    </div>
+                </section>
+
+                <!-- ========== VISTA ANÁLISIS DE VALIDACIÓN ========== -->
+                <section class="conciliacion-view" id="view-validacion">
+                    <div class="dashboard-section">
+                        <div class="dashboard-section-header">
+                            <h3>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Análisis de Validación
+                            </h3>
+                            <div class="header-actions" style="display: flex; gap: 8px;">
+                                <select id="filtroValidacion" class="form-select" style="width: auto; padding: 6px 12px; font-size: 0.8125rem;">
+                                    <option value="todos">Todas las órdenes</option>
+                                    <option value="validadas">Solo validadas</option>
+                                    <option value="diferencias">Solo con diferencias</option>
+                                    <option value="multiples">Con múltiples SOURCE_IDs</option>
+                                    <option value="sin_api">Sin datos API</option>
+                                </select>
+                                <button class="btn btn-secondary btn-sm" onclick="AnalisisValidacionManager.exportar()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Exportar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Resumen de validación -->
+                        <div id="validacionResumen" class="validacion-resumen" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; padding: 16px; background: var(--gray-50); border-radius: 8px; margin-bottom: 16px;">
+                            <div class="validacion-stat">
+                                <div class="validacion-stat-label">Total Órdenes</div>
+                                <div class="validacion-stat-value" id="val-total">0</div>
+                            </div>
+                            <div class="validacion-stat">
+                                <div class="validacion-stat-label">Monto Edo. Cuenta</div>
+                                <div class="validacion-stat-value" id="val-monto-edocuenta" style="color: var(--primary);">$0.00</div>
+                            </div>
+                            <div class="validacion-stat">
+                                <div class="validacion-stat-label">Validadas</div>
+                                <div class="validacion-stat-value" id="val-validadas" style="color: var(--success);">0</div>
+                            </div>
+                            <div class="validacion-stat">
+                                <div class="validacion-stat-label">Con Diferencias</div>
+                                <div class="validacion-stat-value" id="val-diferencias" style="color: var(--danger);">0</div>
+                            </div>
+                            <div class="validacion-stat">
+                                <div class="validacion-stat-label">% Validación</div>
+                                <div class="validacion-stat-value" id="val-porcentaje">0%</div>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de análisis -->
+                        <div class="dashboard-section-body" style="padding: 0;">
+                            <div id="validacionTablaContainer" style="overflow-x: auto; overflow-y: auto; max-height: 70vh;">
+                                <table class="validacion-tabla" id="validacionTabla" style="width: 100%; border-collapse: collapse; font-size: 0.8125rem;">
+                                    <thead>
+                                        <tr style="background: var(--gray-100); border-bottom: 2px solid var(--gray-200);">
+                                            <th style="padding: 12px; text-align: left; font-weight: 600;">Referencia</th>
+                                            <th style="padding: 12px; text-align: left; font-weight: 600;">SOURCE_IDs</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600;">Ingreso Bruto</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600;">Comision MP</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600;">% Comision</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600;">Envio ML</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600; background: #fff7ed; color: #92400e;" title="Cuota MSI retenida por ML (meses sin intereses)">Financiamiento</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600; background: #fef2f2; color: #991b1b;" title="Dinero retenido por reclamo o disputa abierta">Retención ML</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600; background: #fef2f2; color: #991b1b;" title="Cobros adicionales de ISR/IVA post-liberación">Ajuste ISR/IVA</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600; background: #f0fdf4; color: #166534;" title="Envío del comprador depositado en liberación separada">Env.Comp.Sep.</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600;">Envío Cte.</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600;">Total Gastos</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600;">Subtotal</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600;">IVA</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600;">ISR</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600;">Neto Edo. Cuenta</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600;">Diferencia</th>
+                                            <th style="padding: 12px; text-align: center; font-weight: 600;">Estado</th>
+                                            <th style="padding: 12px; text-align: center; font-weight: 600;">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="validacionTablaBody">
+                                        <tr>
+                                            <td colspan="19" style="padding: 40px; text-align: center; color: var(--gray-500);">
+                                                Procesa una conciliación para ver el análisis de validación.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel de detalle expandido -->
+                    <div id="validacionDetalle" class="panel" style="display: none; margin-top: 16px;">
+                        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 id="validacionDetalleTitle">Detalle de Orden</h3>
+                            <button class="btn btn-sm btn-secondary" onclick="AnalisisValidacionManager.cerrarDetalle()">Cerrar</button>
+                        </div>
+                        <div class="panel-body" id="validacionDetalleBody">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========== VISTA ANÁLISIS ERP (INTELISIS) ========== -->
+                <section class="conciliacion-view" id="view-analisis-erp">
+                    <div class="dashboard-section">
+                        <div class="dashboard-section-header">
+                            <h3>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                                </svg>
+                                Análisis ERP (Intelisis)
+                            </h3>
+                            <div class="header-actions" style="display: flex; gap: 8px;">
+                                <select id="filtroERP" class="form-select" style="width: auto; padding: 6px 12px; font-size: 0.8125rem;">
+                                    <option value="todos">Todas las órdenes</option>
+                                    <option value="encontradas">Encontradas en ERP</option>
+                                    <option value="no-encontradas">No encontradas</option>
+                                    <option value="coinciden">Montos coinciden</option>
+                                    <option value="diferencias">Con diferencias</option>
+                                </select>
+                                <button class="btn btn-secondary btn-sm" onclick="AnalisisERPManager.exportar()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Exportar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Mensaje si no hay conciliación ERP -->
+                        <div id="erpNoData" class="erp-no-data" style="display: block; padding: 40px; text-align: center; color: var(--gray-500);">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                            </svg>
+                            <p style="font-weight: 500; margin-bottom: 8px;">No hay datos de conciliación ERP</p>
+                            <p style="font-size: 0.875rem;">Primero procesa una conciliación y luego ejecuta "Conciliar con Intelisis" para ver el análisis.</p>
+                        </div>
+
+                        <!-- Contenido del análisis (oculto inicialmente) -->
+                        <div id="erpAnalisisContent" style="display: none;">
+                            <!-- Resumen de conciliación ERP -->
+                            <div id="erpResumen" class="validacion-resumen" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; padding: 16px; background: var(--gray-50); border-radius: 8px; margin-bottom: 16px;">
+                                <div class="validacion-stat">
+                                    <div class="validacion-stat-label">Total Procesadas</div>
+                                    <div class="validacion-stat-value" id="erp-total">0</div>
+                                </div>
+                                <div class="validacion-stat">
+                                    <div class="validacion-stat-label">Encontradas</div>
+                                    <div class="validacion-stat-value" id="erp-encontradas" style="color: var(--success);">0</div>
+                                </div>
+                                <div class="validacion-stat">
+                                    <div class="validacion-stat-label">No Encontradas</div>
+                                    <div class="validacion-stat-value" id="erp-no-encontradas" style="color: var(--danger);">0</div>
+                                </div>
+                                <div class="validacion-stat">
+                                    <div class="validacion-stat-label">Con Diferencias</div>
+                                    <div class="validacion-stat-value" id="erp-diferencias" style="color: var(--warning);">0</div>
+                                </div>
+                                <div class="validacion-stat">
+                                    <div class="validacion-stat-label">% Coincidencia</div>
+                                    <div class="validacion-stat-value" id="erp-porcentaje">0%</div>
+                                </div>
+                            </div>
+
+                            <!-- Resumen de montos -->
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px;">
+                                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 16px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 0.75rem; color: #92400e; text-transform: uppercase; margin-bottom: 4px;">Total MercadoLibre</div>
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: #78350f;" id="erp-monto-ml">$0.00</div>
+                                </div>
+                                <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 16px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 0.75rem; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">Total Intelisis</div>
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: #1e3a8a;" id="erp-monto-erp">$0.00</div>
+                                </div>
+                                <div style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); padding: 16px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 0.75rem; color: #6b21a8; text-transform: uppercase; margin-bottom: 4px;">Diferencia Total</div>
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: #581c87;" id="erp-monto-diferencia">$0.00</div>
+                                </div>
+                            </div>
+
+                            <!-- Resumen por Estatus con Validaciones ERP -->
+                            <div id="erpResumenEstatus" style="margin-bottom: 16px; display: none;">
+                                <h4 style="margin: 0 0 12px 0; font-size: 0.875rem; color: var(--gray-700);">Resumen por Estatus (Validación ERP)</h4>
+                                <div id="erpResumenEstatusBody" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;"></div>
+                            </div>
+
+                            <!-- Cuadre Contable -->
+                            <div id="erpCuadreContable" style="margin-bottom: 16px; display: none;">
+                                <h4 style="margin: 0 0 12px 0; font-size: 0.875rem; color: var(--gray-700);">Cuadre Contable</h4>
+                                <div id="erpCuadreBody"></div>
+                            </div>
+
+                            <!-- Tabla de análisis ERP -->
+                            <div class="dashboard-section-body" style="padding: 0;">
+                                <div id="erpTablaContainer" style="overflow-x: auto; overflow-y: auto; max-height: 70vh;">
+                                    <table class="validacion-tabla" id="erpTabla" style="width: 100%; border-collapse: collapse; font-size: 0.8125rem;">
+                                        <thead>
+                                            <tr style="background: var(--gray-100); border-bottom: 2px solid var(--gray-200);">
+                                                <th style="padding: 12px; text-align: left; font-weight: 600;">Referencia</th>
+                                                <th style="padding: 12px; text-align: left; font-weight: 600;">SOURCE_IDs</th>
+                                                <th style="padding: 12px; text-align: left; font-weight: 600;">Estatus ML</th>
+                                                <th style="padding: 12px; text-align: left; font-weight: 600;">Estatus ERP</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">Comision MP</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">% Comision</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">Envio ML</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600; background: #fff7ed; color: #92400e;" title="Cuota MSI retenida por ML">Financiamiento</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600; background: #fef2f2; color: #991b1b;" title="Dinero retenido por reclamo">Retención ML</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600; background: #fef2f2; color: #991b1b;" title="Cobros adicionales post-liberación">Ajuste ISR/IVA</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600; background: #f0fdf4; color: #166534;" title="Envío comprador en liberación separada">Env.Comp.Sep.</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">Envío Cte.</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">Total Gastos</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">Subtotal</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">IVA</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">ISR</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">Importe Edo. Cuenta</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">Importe ML</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">Importe ERP</th>
+                                                <th style="padding: 12px; text-align: right; font-weight: 600;">Diferencia</th>
+                                                <th style="padding: 12px; text-align: center; font-weight: 600;">Estado</th>
+                                                <th style="padding: 12px; text-align: center; font-weight: 600;">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="erpTablaBody">
+                                            <!-- Se llena dinámicamente -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel de detalle ERP expandido -->
+                    <div id="erpDetalle" class="panel" style="display: none; margin-top: 16px; border: 2px solid #1e40af;">
+                        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white;">
+                            <h3 id="erpDetalleTitle" style="margin: 0;">Detalle ERP</h3>
+                            <button class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: white; border: none;" onclick="AnalisisERPManager.cerrarDetalle()">Cerrar</button>
+                        </div>
+                        <div class="panel-body" id="erpDetalleBody">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========== VISTA PORTAL DE CASOS ========== -->
+                <section class="portal-casos-view" id="view-casos">
+                    <!-- KPI Bar -->
+                    <div class="portal-kpi-bar">
+                        <div class="portal-kpi total" onclick="CasosManager.filtrarPortalPorEstado(null)">
+                            <div class="portal-kpi-number" id="portal-count-total">0</div>
+                            <div class="portal-kpi-label">Total Activos</div>
+                        </div>
+                        <div class="portal-kpi pendiente" data-filter-estado="PENDIENTE" onclick="CasosManager.filtrarPortalPorEstado('PENDIENTE')">
+                            <div class="portal-kpi-number" id="portal-count-pendientes">0</div>
+                            <div class="portal-kpi-label">Pendientes</div>
+                        </div>
+                        <div class="portal-kpi en-revision" data-filter-estado="EN_REVISION" onclick="CasosManager.filtrarPortalPorEstado('EN_REVISION')">
+                            <div class="portal-kpi-number" id="portal-count-en-revision">0</div>
+                            <div class="portal-kpi-label">En Revisión</div>
+                        </div>
+                        <div class="portal-kpi resuelto">
+                            <div class="portal-kpi-number" id="portal-count-resueltos">0</div>
+                            <div class="portal-kpi-label">Resueltos</div>
+                        </div>
+                    </div>
+
+                    <!-- Toolbar -->
+                    <div class="portal-toolbar">
+                        <div class="portal-toolbar-filters">
+                            <button class="filter-chip active" data-portal-filter="todos" onclick="CasosManager.filtrarPortalPorResponsable('todos')">Todos</button>
+                            <button class="filter-chip" data-portal-filter="CONTADOR" onclick="CasosManager.filtrarPortalPorResponsable('CONTADOR')">Contador</button>
+                            <button class="filter-chip" data-portal-filter="FINANZAS" onclick="CasosManager.filtrarPortalPorResponsable('FINANZAS')">Finanzas</button>
+                            <button class="filter-chip" data-portal-filter="LOGISTICA" onclick="CasosManager.filtrarPortalPorResponsable('LOGISTICA')">Logística</button>
+                        </div>
+                        <div class="portal-toolbar-search">
+                            <input type="text" id="portalBuscarCasos" placeholder="Buscar referencia..." oninput="CasosManager.renderizarPortal()">
+                            <input type="date" id="portalFiltroCasosFecha" onchange="CasosManager.renderizarPortal()">
+                            <select id="portalFiltroWorkflow" class="portal-toolbar-select" onchange="CasosManager.filtrarPortalPorWorkflow(this.value)">
+                                <option value="">Todos los workflows</option>
+                                <option value="DEVOLUCION_PENDIENTE">Devolución</option>
+                                <option value="EN_DISPUTA">En Disputa</option>
+                                <option value="CONTRACARGO">Contracargo</option>
+                                <option value="DISCREPANCIA">Discrepancia</option>
+                                <option value="REVISAR">Revisar</option>
+                                <option value="DEVOLUCION_ORDEN_DEVUELTA">Dev. sin Factura</option>
+                                <option value="DEVOLUCION_EN_PROCESO">Dev. en Proceso</option>
+                                <option value="ANTICIPO">Anticipo</option>
+                                <option value="COBRO_FACTURA">Cobro Factura</option>
+                                <option value="PENDIENTE_ML">Pendiente ML</option>
+                                <option value="MEDIACION_GANADA">Mediación Ganada</option>
+                                <option value="SIN_COBRO">Sin Cobro</option>
+                            </select>
+                        </div>
+                        <div class="portal-toolbar-actions">
+                            <button id="btn-actualizar-erp" onclick="CasosManager.actualizarERPDeCasos()" class="btn btn-sm btn-secondary" title="Re-consulta Intelisis para todos los casos activos">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Actualizar ERP
+                            </button>
+                            <button onclick="CasosManager.exportarPortalExcel()" class="btn btn-sm btn-secondary">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                Exportar Excel
+                            </button>
+                            <button onclick="Interfaz.abrirModalImportar()" class="btn btn-sm btn-secondary">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Importar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Split layout -->
+                    <div class="portal-split">
+                        <!-- Lista panel (35%) -->
+                        <div class="portal-lista-panel">
+                            <div class="portal-lista-header">
+                                <span>Casos Pendientes</span>
+                                <span class="portal-lista-count" id="portalListaCount">0</span>
+                            </div>
+                            <div class="portal-lista" id="portalListaCasos">
+                                <div class="sidebar-empty">
+                                    <div class="sidebar-empty-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="width: 48px; height: 48px; opacity: 0.4;">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                        </svg>
+                                    </div>
+                                    <p>No hay casos pendientes</p>
+                                    <p class="sidebar-empty-sub">Los casos se crearán automáticamente al procesar una conciliación</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detalle panel (65%) -->
+                        <div class="portal-detalle-panel">
+                            <div id="portalDetalleCaso" class="portal-detalle-placeholder-wrap">
+                                <div class="portal-detalle-placeholder">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.3;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                    </svg>
+                                    <p>Selecciona un caso de la lista para ver su detalle</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========== VISTA WALMART MX ========== -->
+                <section class="conciliacion-view" id="view-walmart">
+                    <div class="dashboard-welcome">
+                        <h2>Conciliación Walmart MX</h2>
+                        <p>Sube los CSV de pagos para generar el Excel consolidado. Las devoluciones se registran automáticamente como casos en el Portal.</p>
+                    </div>
+
+                    <!-- Tabs Consolidado / Individual -->
+                    <div class="endpoint-buttons" style="margin-bottom: 24px;">
+                        <button class="endpoint-btn active" id="wm-tab-consolidado"
+                                onclick="WalmartManager.setTab('consolidado')">Consolidado (Atlas + Spring)</button>
+                        <button class="endpoint-btn" id="wm-tab-individual"
+                                onclick="WalmartManager.setTab('individual')">Individual</button>
+                    </div>
+
+                    <!-- Panel Consolidado -->
+                    <div id="wm-panel-consolidado">
+                        <div class="upload-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="upload-zone" id="wm-zone-atlas"
+                                 onclick="document.getElementById('wm-file-atlas').click()">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:var(--gray-400);margin-bottom:12px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <h3>Atlas del Descanso</h3>
+                                <p>CSV de pagos Atlas (.csv)</p>
+                                <input type="file" class="file-input" id="wm-file-atlas" accept=".csv"
+                                       onchange="WalmartManager.onFile('atlas', this)">
+                                <div class="file-name" id="wm-name-atlas"></div>
+                            </div>
+                            <div class="upload-zone" id="wm-zone-spring"
+                                 onclick="document.getElementById('wm-file-spring').click()">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:var(--gray-400);margin-bottom:12px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <h3>Spring</h3>
+                                <p>CSV de pagos Spring (.csv)</p>
+                                <input type="file" class="file-input" id="wm-file-spring" accept=".csv"
+                                       onchange="WalmartManager.onFile('spring', this)">
+                                <div class="file-name" id="wm-name-spring"></div>
+                            </div>
+                        </div>
+                        <div class="process-section">
+                            <button class="btn btn-primary" id="wm-btn-consolidado" disabled
+                                    onclick="WalmartManager.conciliarConsolidado()">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                Generar Consolidado
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Panel Individual -->
+                    <div id="wm-panel-individual" style="display:none">
+                        <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+                            <label style="font-weight:600;font-size:0.875rem;">Cuenta:</label>
+                            <select id="wm-cuenta-individual" class="filter-select" style="width:200px;">
+                                <option value="atlas">Atlas del Descanso</option>
+                                <option value="spring">Spring</option>
+                            </select>
+                        </div>
+                        <div class="upload-grid" style="grid-template-columns: 1fr;">
+                            <div class="upload-zone" id="wm-zone-individual"
+                                 onclick="document.getElementById('wm-file-individual').click()">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:var(--gray-400);margin-bottom:12px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <h3>CSV de pagos</h3>
+                                <p>Selecciona el archivo CSV de la cuenta indicada</p>
+                                <input type="file" class="file-input" id="wm-file-individual" accept=".csv"
+                                       onchange="WalmartManager.onFile('individual', this)">
+                                <div class="file-name" id="wm-name-individual"></div>
+                            </div>
+                        </div>
+                        <div class="process-section">
+                            <button class="btn btn-primary" id="wm-btn-individual" disabled
+                                    onclick="WalmartManager.conciliarIndividual()">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                Generar Reporte
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loading -->
+                    <div class="loading" id="wm-loading">
+                        <div class="spinner"></div>
+                        <p id="wm-loading-text">Procesando conciliación Walmart...</p>
+                    </div>
+
+                    <!-- Resultado -->
+                    <div id="wm-resultado" style="display:none; margin-top:24px;">
+                        <div class="stats-grid" id="wm-stats" style="margin-bottom:20px;"></div>
+                        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                            <button class="btn btn-primary" id="wm-btn-descargar"
+                                    onclick="WalmartManager.descargar()">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Descargar Excel
+                            </button>
+                            <button class="btn btn-secondary"
+                                    onclick="Interfaz.cambiarVista('casos')">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                                Ver casos Walmart
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========== VISTA ADMIN ========== -->
+                <section class="conciliacion-view" id="view-admin">
+                    <div class="admin-view">
+                        <div class="admin-header">
+                            <h2>Gestión de Usuarios</h2>
+                            <button class="btn btn-primary" onclick="AdminManager.abrirModalCrear()">
+                                + Nuevo Usuario
+                            </button>
+                        </div>
+                        <div id="admin-tabla-container">
+                            <table class="admin-tabla-usuarios" id="admin-tabla-usuarios">
+                                <thead>
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>Nombre</th>
+                                        <th>Rol</th>
+                                        <th>Estado</th>
+                                        <th>Último Login</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-tabla-body">
+                                    <tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px;">Cargando usuarios...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Admin -->
+    <div id="admin-modal-overlay" class="admin-modal-overlay" style="display:none" onclick="AdminManager.cerrarModal(event)">
+        <div class="admin-modal" id="admin-modal">
+            <h3 id="admin-modal-titulo">Nuevo Usuario</h3>
+            <input type="hidden" id="admin-modal-user-id">
+            <div class="admin-form-field" id="admin-field-username">
+                <label>Username</label>
+                <input type="text" id="admin-input-username" placeholder="ej: jgarcia">
+            </div>
+            <div class="admin-form-field">
+                <label>Nombre completo</label>
+                <input type="text" id="admin-input-nombre" placeholder="ej: Juan García">
+            </div>
+            <div class="admin-form-field" id="admin-field-password">
+                <label>Contraseña</label>
+                <input type="password" id="admin-input-password" placeholder="Contraseña inicial">
+            </div>
+            <div class="admin-form-field">
+                <label>Rol</label>
+                <select id="admin-input-rol">
+                    <option value="FINANZAS">FINANZAS</option>
+                    <option value="LOGISTICA">LOGISTICA</option>
+                    <option value="VENTAS">VENTAS</option>
+                    <option value="ADMIN">ADMIN</option>
+                </select>
+            </div>
+            <div class="admin-modal-footer">
+                <button class="btn btn-secondary" onclick="AdminManager.cerrarModal()">Cancelar</button>
+                <button class="btn btn-primary" id="admin-modal-submit" onclick="AdminManager.guardarModal()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL DETALLE DE CASO ========== -->
+    <div class="caso-detalle-overlay" id="casoDetalleOverlay" onclick="CasosManager.cerrarDetalleCaso(event)">
+        <div class="caso-detalle" onclick="event.stopPropagation()">
+            <div class="caso-detalle-header">
+                <div class="caso-detalle-title">
+                    <span class="prioridad-badge urgente" id="detalle-prioridad">URGENTE</span>
+                    <div>
+                        <h2 id="detalle-titulo">Caso #123</h2>
+                        <p id="detalle-subtitulo">DEVOLUCION - Asignado a: LOGÍSTICA</p>
+                    </div>
+                </div>
+                <button class="caso-detalle-close" onclick="CasosManager.cerrarDetalleCaso()">&times;</button>
+            </div>
+
+            <div class="caso-detalle-body">
+                <div class="caso-info-grid" id="detalle-info">
+                    <!-- Se llena dinámicamente -->
+                </div>
+
+
+                <div class="caso-section">
+                    <h4>Historial</h4>
+                    <div class="historial-list" id="detalle-historial">
+                        <!-- Se llena dinámicamente -->
+                    </div>
+                </div>
+
+                <div class="caso-section caso-notas">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <h4 style="margin: 0;">Notas</h4>
+                        <button class="btn btn-sm btn-primary" onclick="CasosManager.guardarNotasCaso('modal')" id="btn-guardar-notas-modal">Guardar notas</button>
+                    </div>
+                    <textarea id="detalle-notas" placeholder="Agregar notas sobre este caso..."></textarea>
+                </div>
+            </div>
+
+            <div class="caso-detalle-footer">
+                <div class="caso-sla">
+                    <span>SLA:</span>
+                    <strong id="detalle-sla">24 horas</strong>
+                </div>
+                <div class="caso-actions">
+                    <select id="detalle-responsable-select" class="reasignar-select" onchange="CasosManager.reasignarCaso(this.value)">
+                        <option value="CONTADOR">Contador</option>
+                        <option value="FINANZAS">Finanzas</option>
+                        <option value="LOGISTICA">Logística</option>
+                    </select>
+                    <button class="btn btn-secondary" id="btn-en-revision-modal" onclick="CasosManager.toggleEnRevision()">Marcar en revisión</button>
+                    <button class="btn btn-success" onclick="CasosManager.resolverCaso()">Marcar Resuelto</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input oculto para importar -->
+    <input type="file" id="inputImportarJSON" accept=".json" style="display: none;">
+
+    <script src="app.js"></script>
+</body>
+</html>

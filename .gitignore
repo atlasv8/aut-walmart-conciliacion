@@ -1,0 +1,43 @@
+# Credenciales y configuración local
+.env
+*.env
+
+# Caché de API (se regeneran en cada ejecución)
+.erp_cache*.json
+.walmart_po_cache*.json
+.walmart_edo_cta*.json
+
+# Archivos de datos y reportes generados (no van al repo)
+pagos_*.csv
+pagos_*_reporte.xlsx
+consolidado_*.xlsx
+*_reporte.xlsx
+_tmp_*.csv
+consolidado_walmart_*.xlsx
+conciliacion_atlas_*.xlsx
+conciliacion_spring_*.xlsx
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
