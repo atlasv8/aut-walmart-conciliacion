@@ -17,6 +17,7 @@ import subprocess
 import uuid
 import re
 import sys
+import os
 from pathlib import Path
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
