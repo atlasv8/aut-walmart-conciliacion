@@ -76,16 +76,21 @@ ACCION_ERP = {
     # ── NOTA DE CRÉDITO ──────────────────────────────────────────────────────
     # Devolución del cliente; se revierte solo la venta
     ("Venta",          "Egreso"):  "NOTA_CREDITO",
+    ("Egreso venta",   "Egreso"):  "NOTA_CREDITO",
 
     # ── GASTO DE PLATAFORMA ──────────────────────────────────────────────────
     # Costos operativos y comisiones deducibles
-    ("Comision",                    "Egreso"): "GASTO_PLATAFORMA",
-    ("killerCommission",            "Egreso"): "GASTO_PLATAFORMA",
-    ("Killer",                      "Egreso"): "GASTO_PLATAFORMA",
-    ("Campañas - Marketing SEM",    "Egreso"): "GASTO_PLATAFORMA",
-    ("WFS - Tarifa de almacenaje",  "Egreso"): "GASTO_PLATAFORMA",
-    ("WFS - Tarifa de envio",       "Egreso"): "GASTO_PLATAFORMA",
-    ("WFS - Tarifa de manejo",      "Egreso"): "GASTO_PLATAFORMA",
+    ("Comision",                        "Egreso"): "GASTO_PLATAFORMA",
+    ("killerCommission",                "Egreso"): "GASTO_PLATAFORMA",
+    ("killerCommission Adjustment",     "Egreso"): "GASTO_PLATAFORMA",
+    ("killerCommission Adjustment",     "Ingreso"): "GASTO_PLATAFORMA",
+    ("Killer",                          "Egreso"): "GASTO_PLATAFORMA",
+    ("Campañas - Marketing SEM",        "Egreso"): "GASTO_PLATAFORMA",
+    ("Publicidad - Walmart Connect",    "Egreso"): "GASTO_PLATAFORMA",
+    ("WFS - Tarifa de almacenaje",      "Egreso"): "GASTO_PLATAFORMA",
+    ("WFS - Tarifa de envio",           "Egreso"): "GASTO_PLATAFORMA",
+    ("WFS - Tarifa de manejo",          "Egreso"): "GASTO_PLATAFORMA",
+    ("WFS - MP_CO_OP",                  "Egreso"): "GASTO_PLATAFORMA",
 
     # ── RETENCIÓN FISCAL ─────────────────────────────────────────────────────
     # Egreso: Walmart retiene en ventas normales (no generan pago inmediato)

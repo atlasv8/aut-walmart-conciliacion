@@ -25,6 +25,7 @@ import requests
 import time
 import random
 import secrets
+import threading
 
 # Directorio raíz de los scripts de conciliación (un nivel arriba del portal)
 CONCILIACION_DIR = Path(__file__).parent.parent
@@ -1669,6 +1670,129 @@ def comparar_conciliaciones(ids: str, db: Session = Depends(get_db), current_use
 
 # ========== WALMART MX – CONCILIACIÓN ==========
 
+# Almacén en memoria de jobs de conciliación Walmart (proceso largo)
+_walmart_jobs: dict = {}  # job_id -> {status, resumen, archivo, error, ts}
+
+
+def _run_conciliacion_consolidada_bg(
+    job_id: str,
+    atlas_bytes: bytes,
+    spring_bytes: bytes,
+    run_id: str,
+):
+    """Worker en background para conciliación consolidada Atlas+Spring."""
+    atlas_path  = CONCILIACION_DIR / f"_tmp_atlas_{run_id}.csv"
+    spring_path = CONCILIACION_DIR / f"_tmp_spring_{run_id}.csv"
+    output_name = f"consolidado_walmart_{run_id}.xlsx"
+    output_path = CONCILIACION_DIR / output_name
+
+    try:
+        atlas_path.write_bytes(atlas_bytes)
+        spring_path.write_bytes(spring_bytes)
+
+        result = subprocess.run(
+            [sys.executable, "run_consolidado.py",
+             "--atlas",  str(atlas_path),
+             "--spring", str(spring_path),
+             "--output", str(output_path)],
+            cwd=str(CONCILIACION_DIR),
+            capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=7200,
+            env={**os.environ, 'PYTHONIOENCODING': 'utf-8'},
+        )
+        if result.returncode != 0:
+            _walmart_jobs[job_id] = {
+                "status": "error",
+                "error": f"Error en conciliación:\n{result.stderr[-800:]}",
+            }
+            return
+
+        # Sincronizar casos (DB propia)
+        db = SessionLocal()
+        try:
+            casos  = _extraer_notas_credito(output_path)
+            counts = _sync_casos_walmart(casos, db)
+        finally:
+            db.close()
+
+        # Contar registros por cuenta
+        atlas_regs = spring_regs = 0
+        wb2 = load_workbook(output_path, read_only=True)
+        if "A Pagar Proveedor" in wb2.sheetnames:
+            for row in wb2["A Pagar Proveedor"].iter_rows(min_row=5, values_only=True):
+                if not any(row): continue
+                cv = str(row[0] or "").strip()
+                if cv == "Atlas":   atlas_regs  += 1
+                elif cv == "Spring": spring_regs += 1
+        wb2.close()
+
+        logger.info(f"Walmart BG consolidado run={run_id}: atlas={atlas_regs} spring={spring_regs} {counts}")
+        _walmart_jobs[job_id] = {
+            "status": "done",
+            "archivo": output_name,
+            "resumen": {"atlas": atlas_regs, "spring": spring_regs, **counts},
+        }
+
+    except subprocess.TimeoutExpired:
+        _walmart_jobs[job_id] = {"status": "error", "error": "El proceso excedió 2 horas"}
+    except Exception as e:
+        logger.error(f"Error BG walmart_conciliar: {e}")
+        _walmart_jobs[job_id] = {"status": "error", "error": str(e)}
+    finally:
+        for p in (atlas_path, spring_path):
+            p.unlink(missing_ok=True)
+
+
+def _run_conciliacion_individual_bg(
+    job_id: str,
+    csv_bytes: bytes,
+    cuenta: str,
+    run_id: str,
+):
+    """Worker en background para conciliación individual (una cuenta)."""
+    csv_path    = CONCILIACION_DIR / f"_tmp_{cuenta}_{run_id}.csv"
+    output_name = f"conciliacion_{cuenta}_{run_id}.xlsx"
+    output_path = CONCILIACION_DIR / output_name
+
+    try:
+        csv_path.write_bytes(csv_bytes)
+
+        result = subprocess.run(
+            [sys.executable, "run_conciliacion.py",
+             str(csv_path), "--cuenta", cuenta, "--output", str(output_path)],
+            cwd=str(CONCILIACION_DIR),
+            capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=7200,
+            env={**os.environ, 'PYTHONIOENCODING': 'utf-8'},
+        )
+        if result.returncode != 0:
+            _walmart_jobs[job_id] = {
+                "status": "error",
+                "error": f"Error en conciliación:\n{result.stderr[-800:]}",
+            }
+            return
+
+        db = SessionLocal()
+        try:
+            casos  = _extraer_notas_credito(output_path, cuenta_default=cuenta.capitalize())
+            counts = _sync_casos_walmart(casos, db)
+        finally:
+            db.close()
+
+        logger.info(f"Walmart BG individual run={run_id} cuenta={cuenta}: {counts}")
+        _walmart_jobs[job_id] = {
+            "status": "done",
+            "archivo": output_name,
+            "resumen": {cuenta: len(casos), **counts},
+        }
+
+    except subprocess.TimeoutExpired:
+        _walmart_jobs[job_id] = {"status": "error", "error": "El proceso excedió 2 horas"}
+    except Exception as e:
+        logger.error(f"Error BG walmart_conciliar_individual: {e}")
+        _walmart_jobs[job_id] = {"status": "error", "error": str(e)}
+    finally:
+        csv_path.unlink(missing_ok=True)
+
+
 def _sync_casos_walmart(casos_data: list, db: Session) -> dict:
     """Crea o actualiza casos de devolución Walmart en la BD. Devuelve conteos."""
     ahora  = datetime.utcnow()
@@ -1755,6 +1879,7 @@ def _extraer_notas_credito(xlsx_path: Path, cuenta_default: str = "") -> list:
                 "orderlineNumber": orderline,
                 "paymentDate": fecha,
                 "erpId": erp_id,
+                "pedido": erp_id,
                 "fulfilledBy": fulfilled,
                 "plataforma": "Walmart MX",
             },
@@ -1768,122 +1893,60 @@ def _extraer_notas_credito(xlsx_path: Path, cuenta_default: str = "") -> list:
 async def walmart_conciliar(
     atlas_csv:  UploadFile = File(...),
     spring_csv: UploadFile = File(...),
-    db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Conciliación consolidada Walmart MX — Atlas + Spring."""
-    run_id      = uuid.uuid4().hex[:8]
-    atlas_path  = CONCILIACION_DIR / f"_tmp_atlas_{run_id}.csv"
-    spring_path = CONCILIACION_DIR / f"_tmp_spring_{run_id}.csv"
-    output_name = f"consolidado_walmart_{run_id}.xlsx"
-    output_path = CONCILIACION_DIR / output_name
+    """Conciliación consolidada Walmart MX — Atlas + Spring. Inicia en background."""
+    run_id  = uuid.uuid4().hex[:8]
+    job_id  = run_id
+    atlas_bytes  = await atlas_csv.read()
+    spring_bytes = await spring_csv.read()
 
-    try:
-        atlas_path.write_bytes(await atlas_csv.read())
-        spring_path.write_bytes(await spring_csv.read())
+    _walmart_jobs[job_id] = {"status": "processing"}
+    t = threading.Thread(
+        target=_run_conciliacion_consolidada_bg,
+        args=(job_id, atlas_bytes, spring_bytes, run_id),
+        daemon=True,
+    )
+    t.start()
 
-        result = subprocess.run(
-            [sys.executable, "run_consolidado.py",
-             "--atlas",  str(atlas_path),
-             "--spring", str(spring_path),
-             "--output", str(output_path)],
-            cwd=str(CONCILIACION_DIR),
-            capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=300,
-            env={**os.environ, 'PYTHONIOENCODING': 'utf-8'},
-        )
-        if result.returncode != 0:
-            raise HTTPException(status_code=500,
-                detail=f"Error en conciliación:\n{result.stderr[-800:]}")
-
-        # Extraer Notas de Crédito y sincronizar casos
-        casos  = _extraer_notas_credito(output_path)
-        counts = _sync_casos_walmart(casos, db)
-
-        # Contar registros totales por cuenta (hoja A Pagar Proveedor, col 0 = Cuenta)
-        atlas_regs = spring_regs = 0
-        wb2 = load_workbook(output_path, read_only=True)
-        if "A Pagar Proveedor" in wb2.sheetnames:
-            for row in wb2["A Pagar Proveedor"].iter_rows(min_row=5, values_only=True):
-                if not any(row): continue
-                cv = str(row[0] or "").strip()
-                if cv == "Atlas":  atlas_regs  += 1
-                elif cv == "Spring": spring_regs += 1
-        wb2.close()
-
-        logger.info(f"Walmart consolidado run={run_id}: atlas={atlas_regs} spring={spring_regs} {counts}")
-        return {
-            "success": True,
-            "archivo": output_name,
-            "resumen": {
-                "atlas":  atlas_regs,
-                "spring": spring_regs,
-                **counts,
-            },
-        }
-
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="El proceso excedió 5 minutos")
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Error walmart_conciliar: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        for p in (atlas_path, spring_path):
-            p.unlink(missing_ok=True)
+    return {"job_id": job_id, "status": "processing"}
 
 
 @app.post("/walmart/conciliar-individual")
 async def walmart_conciliar_individual(
     csv_file: UploadFile = File(...),
     cuenta: str = "atlas",
-    db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Conciliación individual Walmart MX — una cuenta."""
+    """Conciliación individual Walmart MX — una cuenta. Inicia en background."""
     if cuenta not in ("atlas", "spring"):
         raise HTTPException(status_code=400, detail="cuenta debe ser 'atlas' o 'spring'")
 
-    run_id      = uuid.uuid4().hex[:8]
-    csv_path    = CONCILIACION_DIR / f"_tmp_{cuenta}_{run_id}.csv"
-    output_name = f"conciliacion_{cuenta}_{run_id}.xlsx"
-    output_path = CONCILIACION_DIR / output_name
+    run_id    = uuid.uuid4().hex[:8]
+    job_id    = run_id
+    csv_bytes = await csv_file.read()
 
-    try:
-        csv_path.write_bytes(await csv_file.read())
+    _walmart_jobs[job_id] = {"status": "processing"}
+    t = threading.Thread(
+        target=_run_conciliacion_individual_bg,
+        args=(job_id, csv_bytes, cuenta, run_id),
+        daemon=True,
+    )
+    t.start()
 
-        result = subprocess.run(
-            [sys.executable, "run_conciliacion.py",
-             str(csv_path), "--cuenta", cuenta, "--output", str(output_path)],
-            cwd=str(CONCILIACION_DIR),
-            capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=300,
-            env={**os.environ, 'PYTHONIOENCODING': 'utf-8'},
-        )
-        if result.returncode != 0:
-            raise HTTPException(status_code=500,
-                detail=f"Error en conciliación:\n{result.stderr[-800:]}")
+    return {"job_id": job_id, "status": "processing"}
 
-        casos  = _extraer_notas_credito(output_path, cuenta_default=cuenta.capitalize())
-        counts = _sync_casos_walmart(casos, db)
 
-        logger.info(f"Walmart individual run={run_id} cuenta={cuenta}: {counts}")
-        return {
-            "success": True,
-            "archivo": output_name,
-            "resumen": {cuenta: len(casos), **counts},
-        }
-
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="El proceso excedió 5 minutos")
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Error walmart_conciliar_individual: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        csv_path.unlink(missing_ok=True)
+@app.get("/walmart/estado/{job_id}")
+async def walmart_estado(
+    job_id: str,
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Consulta el estado de un job de conciliación Walmart."""
+    job = _walmart_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job no encontrado")
+    return job
 
 
 @app.get("/walmart/descargar/{filename}")

@@ -1181,6 +1181,9 @@ const Interfaz = {
         if (vista === 'admin') {
             AdminManager.cargarUsuarios();
         }
+        if (vista === 'walmart') {
+            WalmartManager.verificarJobPendiente();
+        }
     },
 
     cambiarEndpoint(tipo) {
@@ -2290,7 +2293,7 @@ const CasosManager = {
                         <span class="prioridad-badge ${caso.prioridad.toLowerCase()}">${caso.prioridad}</span>
                         <div style="min-width: 0;">
                             <h2 style="font-size: 1rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                <span class="caso-num-badge ${caso.numeroCaso === '#TEMP' ? 'temp' : ''}" style="margin-right: 6px;">${caso.numeroCaso || '#TEMP'}</span><a href="https://www.mercadolibre.com.mx/ventas/omni/listado?filters=&subFilters=&search=${encodeURIComponent(caso.orden.referencia)}&limit=50&offset=0" target="_blank" rel="noopener" title="Ver en MercadoLibre" style="color: inherit; text-decoration: none; border-bottom: 1px dashed var(--primary);">${caso.orden.referencia}&nbsp;<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;display:inline;vertical-align:middle;color:var(--primary);"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg></a>
+                                <span class="caso-num-badge ${caso.numeroCaso === '#TEMP' ? 'temp' : ''}" style="margin-right: 6px;">${caso.numeroCaso || '#TEMP'}</span>${caso.orden.referencia.startsWith('WM-') ? `<span style="color:inherit;border-bottom:1px dashed var(--primary);">${caso.orden.referencia}</span>` : `<a href="https://www.mercadolibre.com.mx/ventas/omni/listado?filters=&subFilters=&search=${encodeURIComponent(caso.orden.referencia)}&limit=50&offset=0" target="_blank" rel="noopener" title="Ver en MercadoLibre" style="color: inherit; text-decoration: none; border-bottom: 1px dashed var(--primary);">${caso.orden.referencia}&nbsp;<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;display:inline;vertical-align:middle;color:var(--primary);"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg></a>`}
                             </h2>
                             <p style="font-size: 0.8125rem; color: var(--gray-500);">${caso.tipo} — Asignado a: ${caso.responsable}</p>
                         </div>
@@ -2359,15 +2362,18 @@ const CasosManager = {
         const tituloEl = document.getElementById('detalle-titulo');
         tituloEl.innerHTML = '';
         tituloEl.appendChild(numEl);
-        const mlUrl = `https://www.mercadolibre.com.mx/ventas/omni/listado?filters=&subFilters=&search=${encodeURIComponent(caso.orden.referencia)}&limit=50&offset=0`;
-        const refLink = document.createElement('a');
-        refLink.href = mlUrl;
-        refLink.target = '_blank';
-        refLink.rel = 'noopener';
-        refLink.title = 'Ver en MercadoLibre';
-        refLink.style.cssText = 'color: inherit; text-decoration: none; border-bottom: 1px dashed var(--primary); margin-left: 4px;';
-        refLink.innerHTML = caso.orden.referencia + ' <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;display:inline;vertical-align:middle;color:var(--primary);"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>';
-        tituloEl.appendChild(refLink);
+        const refEl = document.createElement(caso.orden.referencia.startsWith('WM-') ? 'span' : 'a');
+        if (!caso.orden.referencia.startsWith('WM-')) {
+            refEl.href = `https://www.mercadolibre.com.mx/ventas/omni/listado?filters=&subFilters=&search=${encodeURIComponent(caso.orden.referencia)}&limit=50&offset=0`;
+            refEl.target = '_blank';
+            refEl.rel = 'noopener';
+            refEl.title = 'Ver en MercadoLibre';
+            refEl.innerHTML = caso.orden.referencia + ' <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;display:inline;vertical-align:middle;color:var(--primary);"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>';
+        } else {
+            refEl.textContent = caso.orden.referencia;
+        }
+        refEl.style.cssText = 'color: inherit; text-decoration: none; border-bottom: 1px dashed var(--primary); margin-left: 4px;';
+        tituloEl.appendChild(refEl);
         document.getElementById('detalle-subtitulo').textContent = `${caso.tipo} - Asignado a: ${caso.responsable}`;
         const selectEl = document.getElementById('detalle-responsable-select');
         selectEl.value = caso.responsable;
@@ -2639,6 +2645,12 @@ const DashboardManager = {
         document.getElementById('dash-pendientes').textContent    = pendientes.length;
         document.getElementById('dash-en-revision').textContent   = enRevision.length;
         document.getElementById('dash-resueltos').textContent     = resueltos.length;
+
+        // Devoluciones Walmart pendientes
+        const wmPendientes = activos.filter(c => c.tipo && c.tipo.startsWith('DEVOLUCION_WALMART'));
+        document.getElementById('dash-walmart-pendientes').textContent = wmPendientes.length;
+        const wmTrend = document.getElementById('dash-walmart-trend');
+        if (wmTrend) wmTrend.textContent = wmPendientes.length > 0 ? 'Click para ver' : 'Sin pendientes';
 
         // Estadísticas por rol (solo activos)
         document.getElementById('role-contador').textContent  = activos.filter(c => c.responsable === 'CONTADOR').length;
@@ -5563,9 +5575,50 @@ if (document.readyState === 'loading') {
 
 // ========== MÓDULO WALMART MX ==========
 const WalmartManager = {
-    _tab:     'consolidado',   // tab activo
-    _archivo: null,            // nombre del Excel generado (para descargar)
-    _files:   {},              // { atlas: File, spring: File, individual: File }
+    _tab:     'consolidado',
+    _archivo: null,
+    _files:   {},
+    _JOB_KEY: 'wm_job_activo',   // clave localStorage para recuperar job tras refresh
+
+    _guardarJob(jobId) { localStorage.setItem(this._JOB_KEY, jobId); },
+    _limpiarJob()      { localStorage.removeItem(this._JOB_KEY); },
+    _jobGuardado()     { return localStorage.getItem(this._JOB_KEY); },
+
+    /** Al iniciar la vista Walmart, verifica si hay un job pendiente del que recuperarse. */
+    async verificarJobPendiente() {
+        const jobId = this._jobGuardado();
+        if (!jobId) return;
+        try {
+            const r    = await apiFetch(`${estado.seguimientoApiUrl}/walmart/estado/${jobId}`);
+            const data = await r.json();
+            if (data.status === 'done') {
+                this._limpiarJob();
+                this._archivo = data.archivo;
+                this._mostrarResultado(data.resumen);
+                Interfaz.mostrarToast('Se recuperó el resultado de una conciliación anterior', 'info');
+            } else if (data.status === 'processing') {
+                Interfaz.mostrarToast('Hay una conciliación en curso, esperando resultado...', 'info');
+                this._setLoading(true, 'Retomando conciliación en progreso...');
+                try {
+                    const result = await this._pollJob(jobId);
+                    this._limpiarJob();
+                    this._archivo = result.archivo;
+                    this._mostrarResultado(result.resumen);
+                    Interfaz.mostrarToast('Conciliación completada', 'success');
+                } catch (e) {
+                    this._limpiarJob();
+                    Interfaz.mostrarToast('Error al retomar: ' + e.message, 'error');
+                } finally {
+                    this._setLoading(false);
+                }
+            } else {
+                // error o job expirado
+                this._limpiarJob();
+            }
+        } catch (_) {
+            this._limpiarJob();
+        }
+    },
 
     setTab(tab) {
         this._tab = tab;
@@ -5626,10 +5679,41 @@ const WalmartManager = {
         document.getElementById('wm-resultado').style.display = '';
     },
 
+    async _pollJob(jobId, timeoutMs = 7_200_000) {
+        // Consulta el estado del job cada 4 segundos hasta que termine (máx 2 horas)
+        return new Promise((resolve, reject) => {
+            const intervalo = setInterval(async () => {
+                try {
+                    const r    = await apiFetch(`${estado.seguimientoApiUrl}/walmart/estado/${jobId}`);
+                    const data = await r.json();
+                    if (!r.ok) { clearInterval(intervalo); clearTimeout(limite); reject(new Error(data.detail || 'Error al consultar estado')); return; }
+
+                    if (data.status === 'done') {
+                        clearInterval(intervalo); clearTimeout(limite);
+                        resolve(data);
+                    } else if (data.status === 'error') {
+                        clearInterval(intervalo); clearTimeout(limite);
+                        reject(new Error(data.error || 'Error en el proceso'));
+                    }
+                    // si sigue 'processing', continúa esperando
+                } catch (e) {
+                    clearInterval(intervalo); clearTimeout(limite);
+                    reject(e);
+                }
+            }, 4000);
+
+            // Seguro de salida: si después de timeoutMs sigue sin respuesta, aborta
+            const limite = setTimeout(() => {
+                clearInterval(intervalo);
+                reject(new Error('El proceso superó el tiempo máximo de espera (2 horas)'));
+            }, timeoutMs);
+        });
+    },
+
     async conciliarConsolidado() {
         if (!this._files.atlas || !this._files.spring) return;
 
-        this._setLoading(true, 'Consultando API Walmart y ERP — puede tardar 1-2 minutos...');
+        this._setLoading(true, 'Enviando archivos...');
         document.getElementById('wm-resultado').style.display = 'none';
         document.getElementById('wm-btn-consolidado').disabled = true;
 
@@ -5638,10 +5722,15 @@ const WalmartManager = {
             fd.append('atlas_csv',  this._files.atlas);
             fd.append('spring_csv', this._files.spring);
 
-            const resp = await apiFetch('/walmart/conciliar', { method: 'POST', body: fd });
-            const data = await resp.json();
+            const resp = await apiFetch(`${estado.seguimientoApiUrl}/walmart/conciliar`, { method: 'POST', body: fd });
+            const init = await resp.json();
+            if (!resp.ok) throw new Error(init.detail || 'Error al iniciar conciliación');
 
-            if (!resp.ok) throw new Error(data.detail || 'Error en el servidor');
+            this._guardarJob(init.job_id);
+            this._setLoading(true, 'Consultando API Walmart y ERP — puede tardar varios minutos...');
+
+            const data = await this._pollJob(init.job_id);
+            this._limpiarJob();
 
             this._archivo = data.archivo;
             this._mostrarResultado(data.resumen);
@@ -5652,6 +5741,7 @@ const WalmartManager = {
                 'success'
             );
         } catch (err) {
+            this._limpiarJob();
             Interfaz.mostrarToast('Error: ' + err.message, 'error');
         } finally {
             this._setLoading(false);
@@ -5663,7 +5753,7 @@ const WalmartManager = {
         if (!this._files.individual) return;
 
         const cuenta = document.getElementById('wm-cuenta-individual').value;
-        this._setLoading(true, `Procesando cuenta ${cuenta}...`);
+        this._setLoading(true, 'Enviando archivo...');
         document.getElementById('wm-resultado').style.display = 'none';
         document.getElementById('wm-btn-individual').disabled = true;
 
@@ -5672,16 +5762,22 @@ const WalmartManager = {
             fd.append('csv_file', this._files.individual);
             fd.append('cuenta',   cuenta);
 
-            const resp = await apiFetch(`/walmart/conciliar-individual?cuenta=${cuenta}`, { method: 'POST', body: fd });
-            const data = await resp.json();
+            const resp = await apiFetch(`${estado.seguimientoApiUrl}/walmart/conciliar-individual?cuenta=${cuenta}`, { method: 'POST', body: fd });
+            const init = await resp.json();
+            if (!resp.ok) throw new Error(init.detail || 'Error al iniciar conciliación');
 
-            if (!resp.ok) throw new Error(data.detail || 'Error en el servidor');
+            this._guardarJob(init.job_id);
+            this._setLoading(true, `Procesando cuenta ${cuenta}...`);
+
+            const data = await this._pollJob(init.job_id);
+            this._limpiarJob();
 
             this._archivo = data.archivo;
-            this._mostrarResultado({ ...data.resumen, atlas: undefined, spring: undefined, [cuenta]: data.resumen[cuenta] });
+            this._mostrarResultado(data.resumen);
 
             Interfaz.mostrarToast('Reporte individual listo', 'success');
         } catch (err) {
+            this._limpiarJob();
             Interfaz.mostrarToast('Error: ' + err.message, 'error');
         } finally {
             this._setLoading(false);
@@ -5694,7 +5790,7 @@ const WalmartManager = {
         const token = AuthManager.getToken();
         // Descarga directa via link con token en header no es posible en <a>,
         // usamos fetch + blob para respetar el auth
-        apiFetch(`/walmart/descargar/${this._archivo}`)
+        apiFetch(`${estado.seguimientoApiUrl}/walmart/descargar/${this._archivo}`)
             .then(r => {
                 if (!r.ok) throw new Error('No se encontró el archivo');
                 return r.blob();
